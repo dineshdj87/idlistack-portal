@@ -1,0 +1,50 @@
+version: "3.8"
+
+# Idlistack — WordPress Template
+# Variables: {{ORG_SLUG}}, {{DOMAIN}}, {{DEPLOYMENT_ID}}
+
+services:
+  wordpress-{{ORG_SLUG}}:
+    image: wordpress:6-php8.2-apache
+    restart: unless-stopped
+    environment:
+      WORDPRESS_DB_HOST: db-{{ORG_SLUG}}
+      WORDPRESS_DB_USER: wp
+      WORDPRESS_DB_PASSWORD: ${WP_DB_PASS:-idlistack2024}
+      WORDPRESS_DB_NAME: wordpress_{{ORG_SLUG}}
+    volumes:
+      - wp-data-{{ORG_SLUG}}:/var/www/html
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wp-{{ORG_SLUG}}.rule=Host(`{{DOMAIN}}`)"
+      - "traefik.http.routers.wp-{{ORG_SLUG}}.entrypoints=websecure"
+      - "traefik.http.routers.wp-{{ORG_SLUG}}.tls.certresolver=letsencrypt"
+      - "traefik.http.services.wp-{{ORG_SLUG}}.loadbalancer.server.port=80"
+      - "idlistack.deployment={{DEPLOYMENT_ID}}"
+      - "idlistack.tool=wordpress"
+      - "idlistack.org={{ORG_SLUG}}"
+    networks:
+      - idlistack-net
+    depends_on:
+      - db-{{ORG_SLUG}}
+
+  db-{{ORG_SLUG}}:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: wordpress_{{ORG_SLUG}}
+      MYSQL_USER: wp
+      MYSQL_PASSWORD: ${WP_DB_PASS:-idlistack2024}
+      MYSQL_ROOT_PASSWORD: ${WP_ROOT_PASS:-root_idlistack2024}
+    volumes:
+      - db-data-{{ORG_SLUG}}:/var/lib/mysql
+    networks:
+      - idlistack-net
+
+volumes:
+  wp-data-{{ORG_SLUG}}:
+  db-data-{{ORG_SLUG}}:
+
+networks:
+  idlistack-net:
+    external: true

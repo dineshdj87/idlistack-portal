@@ -1,0 +1,67 @@
+# ============================================================
+#  render.yaml — Render.com Deployment (Free Tier)
+#  Docs: https://render.com/docs/blueprint-spec
+#  
+#  This file defines TWO services:
+#    1. idlistack-backend  (Fastify API on port 4000)
+#    2. idlistack-frontend (Next.js on port 3000)
+#  Plus one PostgreSQL database (free 90-day trial)
+# ============================================================
+
+databases:
+  - name: idlistack-db
+    databaseName: idlistack
+    user: idlistack
+    plan: free                      # Free 90-day PostgreSQL on Render
+    postgresMajorVersion: 15
+
+services:
+  # ── Backend API (Fastify) ──────────────────────────────────
+  - type: web
+    name: idlistack-backend
+    runtime: node
+    plan: free                      # Free 750 hrs/month
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: idlistack-db
+          property: connectionString
+      - key: NEXTAUTH_SECRET
+        generateValue: true         # Render auto-generates a secret
+
+  # ── Frontend (Next.js) ────────────────────────────────────
+  - type: web
+    name: idlistack-frontend
+    runtime: node
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          name: idlistack-backend
+          type: web
+          property: host            # Auto-links to backend URL
+      - key: NEXTAUTH_URL
+        fromService:
+          name: idlistack-frontend
+          type: web
+          property: host
+      - key: NEXTAUTH_SECRET
+        fromService:
+          name: idlistack-backend
+          type: web
+          envVarKey: NEXTAUTH_SECRET

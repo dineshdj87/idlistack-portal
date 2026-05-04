@@ -1,0 +1,52 @@
+version: "3.8"
+
+# Idlistack — Listmonk Template
+# Variables: {{ORG_SLUG}}, {{DOMAIN}}, {{DEPLOYMENT_ID}}
+
+services:
+  listmonk-{{ORG_SLUG}}:
+    image: listmonk/listmonk:latest
+    restart: unless-stopped
+    command: ["./listmonk", "--config", "/listmonk/config.toml"]
+    environment:
+      LISTMONK_app__address: 0.0.0.0:9000
+      LISTMONK_db__host: lmdb-{{ORG_SLUG}}
+      LISTMONK_db__port: "5432"
+      LISTMONK_db__user: listmonk
+      LISTMONK_db__password: ${LM_DB_PASS:-listmonk_pass}
+      LISTMONK_db__database: listmonk_{{ORG_SLUG}}
+    volumes:
+      - lm-uploads-{{ORG_SLUG}}:/listmonk/uploads
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.lm-{{ORG_SLUG}}.rule=Host(`{{DOMAIN}}`)"
+      - "traefik.http.routers.lm-{{ORG_SLUG}}.entrypoints=websecure"
+      - "traefik.http.routers.lm-{{ORG_SLUG}}.tls.certresolver=letsencrypt"
+      - "traefik.http.services.lm-{{ORG_SLUG}}.loadbalancer.server.port=9000"
+      - "idlistack.deployment={{DEPLOYMENT_ID}}"
+      - "idlistack.tool=listmonk"
+      - "idlistack.org={{ORG_SLUG}}"
+    networks:
+      - idlistack-net
+    depends_on:
+      - lmdb-{{ORG_SLUG}}
+
+  lmdb-{{ORG_SLUG}}:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: listmonk_{{ORG_SLUG}}
+      POSTGRES_USER: listmonk
+      POSTGRES_PASSWORD: ${LM_DB_PASS:-listmonk_pass}
+    volumes:
+      - lmdb-data-{{ORG_SLUG}}:/var/lib/postgresql/data
+    networks:
+      - idlistack-net
+
+volumes:
+  lm-uploads-{{ORG_SLUG}}:
+  lmdb-data-{{ORG_SLUG}}:
+
+networks:
+  idlistack-net:
+    external: true

@@ -1,0 +1,57 @@
+version: "3.8"
+
+# Idlistack — Ghost Template
+# Variables: {{ORG_SLUG}}, {{DOMAIN}}, {{DEPLOYMENT_ID}}
+
+services:
+  ghost-{{ORG_SLUG}}:
+    image: ghost:5-alpine
+    restart: unless-stopped
+    environment:
+      url: https://{{DOMAIN}}
+      database__client: mysql
+      database__connection__host: ghostdb-{{ORG_SLUG}}
+      database__connection__user: ghost
+      database__connection__password: ${GHOST_DB_PASS:-ghost_idlistack}
+      database__connection__database: ghost_{{ORG_SLUG}}
+      mail__transport: SMTP
+      mail__options__host: ${SMTP_HOST:-smtp.gmail.com}
+      mail__options__port: ${SMTP_PORT:-587}
+      mail__options__auth__user: ${SMTP_USER}
+      mail__options__auth__pass: ${SMTP_PASS}
+    volumes:
+      - ghost-data-{{ORG_SLUG}}:/var/lib/ghost/content
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ghost-{{ORG_SLUG}}.rule=Host(`{{DOMAIN}}`)"
+      - "traefik.http.routers.ghost-{{ORG_SLUG}}.entrypoints=websecure"
+      - "traefik.http.routers.ghost-{{ORG_SLUG}}.tls.certresolver=letsencrypt"
+      - "traefik.http.services.ghost-{{ORG_SLUG}}.loadbalancer.server.port=2368"
+      - "idlistack.deployment={{DEPLOYMENT_ID}}"
+      - "idlistack.tool=ghost"
+      - "idlistack.org={{ORG_SLUG}}"
+    networks:
+      - idlistack-net
+    depends_on:
+      - ghostdb-{{ORG_SLUG}}
+
+  ghostdb-{{ORG_SLUG}}:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ghost_{{ORG_SLUG}}
+      MYSQL_USER: ghost
+      MYSQL_PASSWORD: ${GHOST_DB_PASS:-ghost_idlistack}
+      MYSQL_ROOT_PASSWORD: ${GHOST_ROOT_PASS:-root_ghost_idlistack}
+    volumes:
+      - ghostdb-data-{{ORG_SLUG}}:/var/lib/mysql
+    networks:
+      - idlistack-net
+
+volumes:
+  ghost-data-{{ORG_SLUG}}:
+  ghostdb-data-{{ORG_SLUG}}:
+
+networks:
+  idlistack-net:
+    external: true
