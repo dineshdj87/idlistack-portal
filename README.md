@@ -178,7 +178,7 @@ idlistack-portal/
 
 ## 👤 Author
 
-Built by [Your Name] as a portfolio project for [Tech4Good Community / Idlistack](https://idlistack.com).
+Built by Dinesh as a portfolio project.
 
 > *"I built this because I believe in what Idlistack is trying to do — and I wanted to show, not just tell."*
 
